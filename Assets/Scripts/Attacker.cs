@@ -24,6 +24,6 @@ public class Attacker : MonoBehaviour
             direction = -direction;
         }
 
-        return direction;
+        return direction.normalized;
     }
 }
