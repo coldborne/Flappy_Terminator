@@ -7,12 +7,19 @@ using UnityEngine;
 [RequireComponent(typeof(OffscreenDetector))]
 public class Enemy : MonoBehaviour, IDamagable
 {
+    [SerializeField, Min(1)] private int _attackDelay;
+    
     private int _speed;
     private float _beforeDeathDelay;
 
-    private WaitForSeconds _waitForSeconds;
+    private WaitForSeconds _waitForSecondsAttackDelay;
+    private WaitForSeconds _waitForSecondsDisappearDelay;
+
     private Health _health;
     private OffscreenDetector _detector;
+    private Attacker _attacker;
+
+    private bool _isShooting;
 
     public event Action<Enemy> Died;
 
@@ -20,6 +27,9 @@ public class Enemy : MonoBehaviour, IDamagable
     {
         _health = new Health();
         _detector = GetComponent<OffscreenDetector>();
+        _attacker = GetComponent<Attacker>();
+        
+        _waitForSecondsAttackDelay = new WaitForSeconds(_attackDelay);
     }
 
     private void Update()
@@ -37,6 +47,8 @@ public class Enemy : MonoBehaviour, IDamagable
     {
         _health.Died -= Die;
         _detector.WentOffscreen -= StartDisappear;
+
+        StopCoroutine(Shooting());
     }
 
     public void Initialize(int speed, Vector3 direction, float beforeDeathDelay)
@@ -44,13 +56,25 @@ public class Enemy : MonoBehaviour, IDamagable
         _speed = speed;
         transform.Rotate(direction, Space.Self);
         _beforeDeathDelay = beforeDeathDelay;
-
-        _waitForSeconds = new WaitForSeconds(_beforeDeathDelay);
+        
+        _waitForSecondsDisappearDelay = new WaitForSeconds(_beforeDeathDelay);
+        
+        _isShooting = true;
+        StartCoroutine(Shooting());
     }
 
     public bool TryGetDamage(int damage)
     {
         return _health.TryGetDamage(damage);
+    }
+
+    private IEnumerator Shooting()
+    {
+        while (_isShooting)
+        {
+            _attacker.Shoot();
+            yield return _waitForSecondsAttackDelay;
+        }
     }
 
     private void StartDisappear()
@@ -60,7 +84,7 @@ public class Enemy : MonoBehaviour, IDamagable
 
     private IEnumerator DisappearAfterDelay()
     {
-        yield return _waitForSeconds;
+        yield return _waitForSecondsDisappearDelay;
 
         Died?.Invoke(this);
     }
